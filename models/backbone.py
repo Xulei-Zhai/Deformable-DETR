@@ -68,10 +68,11 @@ class BackboneBase(nn.Module):
 
     def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool):
         super().__init__()
-        for name, parameter in backbone.named_parameters():
+        # TODO: 打印看一下网络层结构中的 name
+        for name, parameter in backbone.named_parameters():  # 如果train_backbone为False,则将backbone的参数固定; 如果train_backbone为True, 则也只训练backbone的某些层
             if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
                 parameter.requires_grad_(False)
-        if return_interm_layers:
+        if return_interm_layers:   # intermediate layers, 中间层, 控制是否返回中间层的特征（用于多尺度特征提取)
             # return_layers = {"layer1": "0", "layer2": "1", "layer3": "2", "layer4": "3"}
             return_layers = {"layer2": "0", "layer3": "1", "layer4": "2"}
             self.strides = [8, 16, 32]
@@ -101,11 +102,11 @@ class Backbone(BackboneBase):
                  dilation: bool):
         norm_layer = FrozenBatchNorm2d
         backbone = getattr(torchvision.models, name)(
-            replace_stride_with_dilation=[False, False, dilation],
+            replace_stride_with_dilation=[False, False, dilation],  # layer2 和 layer3 默认不使用空洞卷积, layer4 是否使用空洞卷积由参数dilation控制
             pretrained=is_main_process(), norm_layer=norm_layer)
         assert name not in ('resnet18', 'resnet34'), "number of channels are hard coded"
         super().__init__(backbone, train_backbone, return_interm_layers)
-        if dilation:
+        if dilation:  # 如果 layer4 ,则调整其步长
             self.strides[-1] = self.strides[-1] // 2
 
 
